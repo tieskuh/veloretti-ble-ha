@@ -91,9 +91,30 @@ use the bike.
   issue with a debug dump (see [Troubleshooting](#troubleshooting)) if you'd like
   to help add support.
 
-You need a Home Assistant instance with working **Bluetooth** — either a built-in/
-USB adapter on the host, or an [ESPHome Bluetooth proxy](https://esphome.io/components/bluetooth_proxy.html)
-within range of where the bike is parked.
+### Bluetooth requirements (important)
+
+This integration **connects** to the bike (it doesn't just listen to broadcasts),
+so it needs a **connectable** Bluetooth adapter within range of where the bike is
+switched on:
+
+- ✅ **Home Assistant's own Bluetooth adapter** (built-in or a USB dongle), if the
+  bike is close enough to it.
+- ✅ An **[ESPHome Bluetooth proxy](https://esphome.io/components/bluetooth_proxy.html)**
+  (an ESP32) placed near the bike, with **active connections enabled**:
+
+  ```yaml
+  esp32_ble_tracker:
+    scan_parameters:
+      active: true
+  bluetooth_proxy:
+    active: true      # required — makes the proxy connectable, not just a scanner
+  ```
+
+- ❌ **Shelly Bluetooth gateways do _not_ work.** Shelly proxies only forward
+  advertisements; they cannot open a connection (not even in "active" mode, which
+  is active *scanning*, not active *connections*). If your bike is only in range of
+  a Shelly, it will not show up during setup. Use an ESPHome proxy or HA's own
+  adapter instead.
 
 ## Installation
 
@@ -135,8 +156,11 @@ can refine the scaling — findings in an issue are very welcome.
 
 ## Troubleshooting
 
-- **"No Veloretti bikes found" during setup** — the bike is off or out of range.
-  Switch it on with the power button, close the Veloretti app, and retry.
+- **"No Veloretti bikes found" during setup** — switch the bike on with the power
+  button, close the Veloretti app, and retry. If it still doesn't appear, check
+  that a **connectable** adapter is in range: a Shelly Bluetooth gateway won't work
+  (it can't connect) — you need HA's own adapter or an ESPHome proxy with
+  `active: true` (see [Bluetooth requirements](#bluetooth-requirements-important)).
 - **Entities are `unavailable`** — expected while the bike is off. They recover
   automatically the next time you switch it on. If they never recover, check that
   the bike is in Bluetooth range of your adapter/proxy.
