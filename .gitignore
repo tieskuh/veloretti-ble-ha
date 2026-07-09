@@ -1,0 +1,17 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Recon-output (kan MAC-adressen / persoonlijke data bevatten)
+captures/
+captures-*.txt
+*.log
+gatt-dump*.txt
+
+# Interne protocol-aantekeningen (niet publiceren)
+docs/protocol.md
+
+# Claude Code lokale settings
+.claude/settings.local.json

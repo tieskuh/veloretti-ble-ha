@@ -1,0 +1,33 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "bluetooth_confirm": {
+        "description": "Do you want to set up {name}? Make sure the bike is awake and within Bluetooth range."
+      },
+      "user": {
+        "description": "Choose a Veloretti bike to set up. Wake the bike (press its power button) and keep it close to Home Assistant.",
+        "data": {
+          "address": "Bluetooth device"
+        }
+      }
+    },
+    "abort": {
+      "no_devices_found": "No Veloretti bikes found. Wake the bike (press the power button), close the Veloretti app, and make sure the bike is within Bluetooth range of Home Assistant.",
+      "already_configured": "This bike is already configured.",
+      "already_in_progress": "Configuration of this bike is already in progress."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "assist_level": { "name": "Assist level" },
+      "last_successful_poll": { "name": "Last seen" },
+      "speed": { "name": "Speed" },
+      "motion_raw": { "name": "Motion (raw)" }
+    },
+    "binary_sensor": {
+      "lights": { "name": "Lights" },
+      "connectivity": { "name": "Connectivity" }
+    }
+  }
+}

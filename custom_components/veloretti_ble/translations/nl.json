@@ -1,0 +1,33 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "bluetooth_confirm": {
+        "description": "Wil je {name} instellen? Zorg dat de fiets wakker is en binnen bluetoothbereik staat."
+      },
+      "user": {
+        "description": "Kies een Veloretti-fiets om in te stellen. Maak de fiets wakker (druk op de aan-knop) en houd hem dicht bij Home Assistant.",
+        "data": {
+          "address": "Bluetooth-apparaat"
+        }
+      }
+    },
+    "abort": {
+      "no_devices_found": "Geen Veloretti-fietsen gevonden. Maak de fiets wakker (druk op de aan-knop), sluit de Veloretti-app en zorg dat de fiets binnen bluetoothbereik van Home Assistant staat.",
+      "already_configured": "Deze fiets is al ingesteld.",
+      "already_in_progress": "Instellen van deze fiets is al bezig."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "assist_level": { "name": "Ondersteuningsniveau" },
+      "last_successful_poll": { "name": "Laatst gezien" },
+      "speed": { "name": "Snelheid" },
+      "motion_raw": { "name": "Beweging (ruw)" }
+    },
+    "binary_sensor": {
+      "lights": { "name": "Verlichting" },
+      "connectivity": { "name": "Verbinding" }
+    }
+  }
+}
