@@ -40,6 +40,7 @@ SENSORS: tuple[VelorettiSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.BATTERY,
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
         always_available=True,
         restore=True,
         value_fn=lambda coordinator: coordinator.data.battery_soc,
