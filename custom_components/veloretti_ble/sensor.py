@@ -61,16 +61,15 @@ SENSORS: tuple[VelorettiSensorEntityDescription, ...] = (
         restore=True,
         value_fn=lambda coordinator: coordinator.last_successful_poll,
     ),
-    # Speed in km/h — byte 2 of {02,50}, calibrated ~1:1 against a live ride.
-    # Only non-zero while the bike is moving (and in range), so disabled by
-    # default; enable it if you want it.
+    # Speed in km/h — byte 2 of {02,50}, whole km/h and confirmed 1:1 against the
+    # bike's own speed. Only non-zero while the bike is moving and in range.
     VelorettiSensorEntityDescription(
         key="speed",
         translation_key="speed",
         device_class=SensorDeviceClass.SPEED,
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
-        entity_registry_enabled_default=False,
+        suggested_display_precision=0,
         value_fn=lambda coordinator: coordinator.data.speed_kmh,
     ),
     # Fine wheel-motion signal (raw uint16) — experimental, disabled by default.

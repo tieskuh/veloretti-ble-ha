@@ -21,7 +21,7 @@ touches the lock or motor.
 | **Last seen** | Timestamp of the last successful readout (`device_class: timestamp`) | ✅ |
 | **Assist level** | Pedal-assist level 0–4 | ✅ |
 | **Lights** | Headlight on/off (`binary_sensor`, `light`) | ✅ |
-| **Speed** | Wheel speed in km/h (roughly calibrated) — only moves while the bike is riding and in range | ⬜️ |
+| **Speed** | Wheel speed in km/h — only non-zero while the bike is riding and in range | ✅ |
 | **Motion (raw)** | Fine motion / wheel-RPM register — experimental | ⬜️ |
 
 > **Not available: total odometer / trip distance.** The bike's module does not
@@ -36,11 +36,11 @@ it when the app is open. The **Battery** and **Last seen** values stick around
 while the bike sleeps (and across a Home Assistant restart), and **Connectivity**
 tells you whether the reading is live or the last-known one.
 
-**Speed** and the raw **Motion** sensor are disabled by default. They only read
-non-zero while the bike is actually moving *and* still in Bluetooth range — which,
-for a bike parked at home, is rarely. Speed is roughly calibrated to km/h; Motion
-is a raw wheel-rotation value. Enable them if you want them (see
-[Calibration](#calibrating-the-experimental-sensors)).
+**Speed** reads in whole km/h (it matches the bike's own speed). Both it and the
+raw **Motion** sensor only read non-zero while the bike is actually moving *and*
+still in Bluetooth range — which, for a bike parked at home, is rarely. Motion is
+a raw wheel-rotation value and stays disabled by default (see
+[the Motion sensor](#the-motion-sensor)).
 
 ## How it works (and the sleeping-bike problem)
 
@@ -145,14 +145,12 @@ directory and restart Home Assistant.
 
 That's it — the device and its entities appear once the first poll succeeds.
 
-## Calibrating the experimental sensors
+## The Motion sensor
 
-`Speed` is decoded from the bike's motion register and is roughly calibrated to
-km/h (a ~20 km/h ride matched the register nicely), but it hasn't been checked
-against the bike's own display across the full range. `Motion (raw)` is the finer
-wheel-rotation value with no unit yet. If you enable them and note the values
-alongside the speed on the bike's display while riding past Home Assistant, you
-can refine the scaling — findings in an issue are very welcome.
+`Motion (raw)` is the finer wheel-rotation register (a raw 16-bit value with no
+unit yet), disabled by default. If you enable it and note the values alongside the
+speed on the bike's display while riding past Home Assistant, you can work out the
+scaling — findings in an issue are very welcome.
 
 ## Troubleshooting
 

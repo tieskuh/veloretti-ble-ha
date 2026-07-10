@@ -16,5 +16,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/tieskuh/veloretti-ble-ha/issues",
   "requirements": ["bleak-retry-connector>=3.6.0"],
-  "version": "0.3.0"
+  "version": "0.3.1"
 }
