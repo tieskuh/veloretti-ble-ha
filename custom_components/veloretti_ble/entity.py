@@ -40,8 +40,10 @@ class VelorettiEntity(PassiveBluetoothCoordinatorEntity[VelorettiCoordinator]):
         By default a Bluetooth coordinator entity is only available while the
         device is advertising. Entities flagged ``always_available`` (battery,
         last-seen, connectivity) must keep showing their last-known value while
-        the bike sleeps, so they never go ``unavailable``.
+        the bike sleeps, so they never go ``unavailable``. The rest are available
+        while the bike advertises *or* while we hold a live connection (a
+        connected bike often stops advertising, but we're still reading it).
         """
         if getattr(self.entity_description, "always_available", False):
             return True
-        return super().available
+        return super().available or self.coordinator.streaming

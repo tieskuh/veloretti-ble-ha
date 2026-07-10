@@ -33,6 +33,7 @@ from homeassistant.core import CoreState, HomeAssistant, callback
 from homeassistant.util import dt as dt_util
 
 from .comodule import (
+    REG_BATTERY,
     ComoduleAuthError,
     ComoduleClient,
     ComoduleData,
@@ -40,7 +41,7 @@ from .comodule import (
 )
 from .const import (
     DEFAULT_POLL_INTERVAL_SECONDS,
-    LISTEN_WINDOW_SECONDS,
+    KEEPALIVE_SECONDS,
     METRICS_NOTIFIER_UUID,
 )
 
@@ -63,6 +64,8 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
         self._comodule = ComoduleClient()
         # Wall-clock time of the last poll that actually read something.
         self.last_successful_poll: datetime | None = None
+        # True while we hold a live streaming connection to the bike.
+        self._streaming = False
         super().__init__(
             hass=hass,
             logger=_LOGGER,
@@ -80,6 +83,16 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
     def entry(self) -> VelorettiConfigEntry:
         """Return the config entry this coordinator belongs to."""
         return self._entry
+
+    @property
+    def streaming(self) -> bool:
+        """Return True while a live connection to the bike is held.
+
+        A connected BLE peripheral often stops advertising, which would make the
+        advertisement-based ``available`` flip to False. Entities treat streaming
+        as "reachable" so they stay available (and update) while connected.
+        """
+        return self._streaming
 
     @callback
     def _needs_poll(
@@ -167,12 +180,24 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
         self.data = data
         self.async_update_listeners()
 
+    @callback
+    def _set_streaming(self, value: bool) -> None:
+        """Flip the streaming flag and let entities re-evaluate availability."""
+        if self._streaming != value:
+            self._streaming = value
+            self.async_update_listeners()
+
     async def _async_listen(self, client: BleakClientWithServiceCache) -> None:
-        """Stream register change-pushes from the notifier for a short window."""
+        """Stay connected and stream change-pushes until the bike drops off.
+
+        The module pushes a register the moment its value changes, so assist,
+        light and speed changes appear immediately for as long as the bike is on.
+        A periodic battery read keeps the link verified (and the battery fresh)
+        while nothing is changing, and ends the session if the connection died.
+        """
 
         @callback
         def _on_push(_char: object, raw: bytearray) -> None:
-            # The module pushes a register the moment its value changes.
             if apply_notification(self.data, bytes(raw)):
                 self.last_successful_poll = dt_util.utcnow()
                 self.async_update_listeners()
@@ -182,12 +207,25 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
         except BleakError as err:
             _LOGGER.debug("could not subscribe to the notifier: %s", err)
             return
+
+        self._set_streaming(True)
         try:
-            elapsed = 0.0
-            while elapsed < LISTEN_WINDOW_SECONDS and client.is_connected:
-                await asyncio.sleep(1.0)
-                elapsed += 1.0
+            while client.is_connected and self.hass.state is CoreState.running:
+                await asyncio.sleep(KEEPALIVE_SECONDS)
+                if not client.is_connected:
+                    break
+                try:
+                    packet = await self._comodule.async_read_register(
+                        client, REG_BATTERY
+                    )
+                except BleakError as err:
+                    _LOGGER.debug("keepalive read failed, ending session: %s", err)
+                    break
+                if packet is not None and apply_notification(self.data, packet):
+                    self.last_successful_poll = dt_util.utcnow()
+                    self.async_update_listeners()
         finally:
+            self._set_streaming(False)
             try:
                 await client.stop_notify(METRICS_NOTIFIER_UUID)
             except Exception:  # noqa: BLE001 - fine if we're already disconnecting
