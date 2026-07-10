@@ -30,7 +30,10 @@ SECURITY_STATUS_UUID = f"00002558{_BASE}"  # read: isAuthenticated
 # The bike sleeps and only advertises/accepts connections when awake. We poll
 # on a fixed cadence, but only while it is actually being advertised (handled by
 # the active-bluetooth coordinator), so a sleeping bike never produces errors.
-DEFAULT_POLL_INTERVAL_SECONDS = 60
+# After each poll we stay connected for LISTEN_WINDOW_SECONDS to catch live
+# change-pushes on the notifier, then disconnect (so the app can still connect).
+DEFAULT_POLL_INTERVAL_SECONDS = 15
+LISTEN_WINDOW_SECONDS = 20
 
 # --- Config entry -----------------------------------------------------------
 CONF_ADDRESS = "address"

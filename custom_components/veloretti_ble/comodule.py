@@ -106,6 +106,36 @@ def _decode(reg_id: bytes, packet: bytes) -> tuple[str, int | None]:
     return "", None
 
 
+def _apply(data: ComoduleData, reg_id: bytes, packet: bytes) -> bool:
+    """Decode one register packet into ``data``. Returns True if a field was set."""
+    key, value = _decode(reg_id, packet)
+    if key == KEY_BATTERY:
+        data.battery_soc = value
+    elif key == KEY_ASSIST:
+        data.assist_level = value
+        # The {00,C0} register carries the light state in byte 3 (0=off, 1=on).
+        data.lights = bool(packet[3])
+    elif key == KEY_SPEED:
+        data.speed_kmh = value
+    elif key == KEY_MOTION:
+        data.motion_raw = value
+    else:
+        return False
+    data.raw[key] = packet.hex(" ")
+    return True
+
+
+def apply_notification(data: ComoduleData, packet: bytes) -> bool:
+    """Apply a raw 10-byte notifier push (``[id0][id1][8 payload]``) to ``data``.
+
+    The module pushes a register on the notifier the moment its value changes, so
+    this is how live assist/light/speed changes reach us while connected.
+    """
+    if len(packet) < 10:
+        return False
+    return _apply(data, packet[0:2], packet)
+
+
 # Register key -> id, in poll order (battery first — the most valuable value).
 POLL_REGISTERS: dict[str, bytes] = {
     KEY_BATTERY: REG_BATTERY,
@@ -170,17 +200,5 @@ class ComoduleClient:
                 continue
             if packet is None:
                 continue
-            data.raw[key] = packet.hex(" ")
-            decoded_key, value = _decode(reg_id, packet)
-            if decoded_key == KEY_BATTERY:
-                data.battery_soc = value
-            elif decoded_key == KEY_ASSIST:
-                data.assist_level = value
-                # The {00,C0} register carries the light state in byte 3
-                # (0 = off, 1 = on). Confirmed live with the light button.
-                data.lights = bool(packet[3])
-            elif decoded_key == KEY_SPEED:
-                data.speed_kmh = value
-            elif decoded_key == KEY_MOTION:
-                data.motion_raw = value
+            _apply(data, reg_id, packet)
         return data
