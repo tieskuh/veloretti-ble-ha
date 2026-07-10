@@ -69,10 +69,13 @@ current battery level and state and timestamps it → you turn it off again and 
 last-known values stay put.** In practice you get a fresh reading every time you
 use the bike.
 
-> ℹ️ Only one device can talk to the bike at a time. While Home Assistant is
-> connected, the Veloretti app can't connect, and vice-versa. Home Assistant
-> connects only briefly for each poll, so this is rarely noticeable, but if the
-> app "can't find" the bike, give Home Assistant a moment to release it.
+> ℹ️ Only one device can talk to the bike at a time. While the bike is on and in
+> range, Home Assistant holds the connection **continuously**, so the Veloretti
+> app can't connect to it then. That's by design — Home Assistant claims the bike
+> at home, and out on a ride the bike is out of range, the connection drops, and
+> the app connects as usual. If you want to use the app while the bike is near
+> Home Assistant, temporarily disable this integration (or the bike's device) so
+> Home Assistant releases it.
 
 > **No charging sensor.** The bike's module does not expose a charge-current or
 > charging-state register over Bluetooth (confirmed by an exhaustive register
