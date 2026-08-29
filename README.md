@@ -170,8 +170,8 @@ scaling — findings in an issue are very welcome.
   Devices & services → Veloretti BLE → ⋮ → Download diagnostics** and attach the
   file to an issue. It contains every raw register packet your bike answered
   (including registers this decoder doesn't recognise yet), which is exactly
-  what's needed to map a new model. The MAC address and the entry name are
-  redacted automatically.
+  what's needed to map a new model. It never contains your bike's Bluetooth
+  address or the name you gave it, so it's safe to attach to a public issue.
 
   If you'd rather watch it live, enable debug logging:
 

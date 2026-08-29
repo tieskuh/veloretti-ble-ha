@@ -11,14 +11,9 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
-from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
 from .coordinator import VelorettiConfigEntry
-
-# The MAC address identifies one specific bike, and the entry title usually
-# carries its owner's name. Neither is needed to decode a register map.
-TO_REDACT = {"address", "unique_id", "title"}
 
 
 async def async_get_config_entry_diagnostics(
@@ -28,7 +23,22 @@ async def async_get_config_entry_diagnostics(
     coordinator = entry.runtime_data
     last_poll = coordinator.last_successful_poll
     return {
-        "entry": async_redact_data(entry.as_dict(), TO_REDACT),
+        # Deliberately assembled field by field instead of redacting
+        # `entry.as_dict()`. That dict identifies the bike in more places than is
+        # obvious — the address, the unique id, the title (which carries its
+        # owner's name) and, less visibly, the repr of the Bluetooth discovery
+        # key — and it gains new fields across Home Assistant versions. Since a
+        # diagnostics download is meant to be pasted into a public issue, listing
+        # what may go in is the only version-proof way to keep the rest out.
+        "entry": {
+            "domain": entry.domain,
+            "version": entry.version,
+            "minor_version": entry.minor_version,
+            "source": entry.source,
+            "disabled_by": str(entry.disabled_by) if entry.disabled_by else None,
+            "pref_disable_polling": entry.pref_disable_polling,
+            "options": dict(entry.options),
+        },
         "state": {
             # Advertising == the bike is awake and in range.
             "advertising": coordinator.available,
