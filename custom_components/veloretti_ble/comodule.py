@@ -62,8 +62,10 @@ class ComoduleData:
     lights: bool | None = None
     speed_kmh: int | None = None
     motion_raw: int | None = None
-    # Raw 10-byte register packets (hex) keyed by register key — for diagnostics
-    # and for calibrating the experimental values later.
+    # Raw 10-byte register packets (hex) keyed by register id (e.g. "00c1"),
+    # including registers this firmware generation does not decode. Surfaced in
+    # the diagnostics download and the debug log so a new bike model can be
+    # mapped without guessing.
     raw: dict[str, str] = field(default_factory=dict)
 
     def has_any(self) -> bool:
@@ -108,6 +110,10 @@ def _decode(reg_id: bytes, packet: bytes) -> tuple[str, int | None]:
 
 def _apply(data: ComoduleData, reg_id: bytes, packet: bytes) -> bool:
     """Decode one register packet into ``data``. Returns True if a field was set."""
+    # Keep the raw packet for every register we are handed, decodable or not:
+    # an unknown register on an unfamiliar model is exactly the thing someone
+    # needs to see in order to map it.
+    data.raw[reg_id.hex()] = packet.hex(" ")
     key, value = _decode(reg_id, packet)
     if key == KEY_BATTERY:
         data.battery_soc = value
@@ -121,7 +127,6 @@ def _apply(data: ComoduleData, reg_id: bytes, packet: bytes) -> bool:
         data.motion_raw = value
     else:
         return False
-    data.raw[key] = packet.hex(" ")
     return True
 
 

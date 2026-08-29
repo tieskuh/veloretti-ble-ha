@@ -1,7 +1,7 @@
 # Veloretti BLE — Home Assistant integration
 
 Local **Bluetooth Low Energy** integration for **Veloretti e-bikes**. It reads
-your bike's telemetry (battery, charging, assist level, …) directly over
+your bike's telemetry (battery, assist level, lights, speed) directly over
 Bluetooth — **no cloud, no account, no Veloretti subscription**, and it never
 touches the lock or motor.
 
@@ -17,7 +17,7 @@ touches the lock or motor.
 | Entity | Description | Enabled by default |
 |---|---|---|
 | **Battery** | State of charge, 0–100 % (`device_class: battery`). Keeps showing the last-known value while the bike sleeps, and survives a Home Assistant restart. | ✅ |
-| **Connectivity** | On when the bike is currently awake and reachable over Bluetooth, off when it is asleep/out of range (`binary_sensor`, `connectivity`) | ✅ |
+| **Connectivity** | On while the bike is actually being read: awake, in range and answering. Off when it is asleep, out of range, or refusing the connection (`binary_sensor`, `connectivity`) | ✅ |
 | **Last seen** | Timestamp of the last successful readout (`device_class: timestamp`) | ✅ |
 | **Assist level** | Pedal-assist level 0–4 | ✅ |
 | **Lights** | Headlight on/off (`binary_sensor`, `light`) | ✅ |
@@ -166,7 +166,14 @@ scaling — findings in an issue are very welcome.
   automatically the next time you switch it on. If they never recover, check that
   the bike is in Bluetooth range of your adapter/proxy.
 - **Values look wrong on a non-Ivy/Ace model** — the register map may differ.
-  Enable debug logging, capture a poll, and open an issue:
+  The quickest way to help is a **diagnostics download**: go to **Settings →
+  Devices & services → Veloretti BLE → ⋮ → Download diagnostics** and attach the
+  file to an issue. It contains every raw register packet your bike answered
+  (including registers this decoder doesn't recognise yet), which is exactly
+  what's needed to map a new model. The MAC address and the entry name are
+  redacted automatically.
+
+  If you'd rather watch it live, enable debug logging:
 
   ```yaml
   # configuration.yaml
@@ -175,8 +182,8 @@ scaling — findings in an issue are very welcome.
       custom_components.veloretti_ble: debug
   ```
 
-  The debug log includes the raw register packets, which is exactly what's needed
-  to map a new model.
+  The debug log then prints the raw register packets on every poll, and each
+  change the bike pushes while connected.
 
 ## Privacy & security
 

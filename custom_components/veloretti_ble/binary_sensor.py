@@ -42,9 +42,15 @@ BINARY_SENSORS: tuple[VelorettiBinarySensorEntityDescription, ...] = (
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         # Must never be unavailable, otherwise it could not report "offline".
         always_available=True,
-        # On == the bike is currently reachable: advertising, or connected (a
-        # connected bike often stops advertising, so check streaming too).
-        value_fn=lambda coordinator: coordinator.available or coordinator.streaming,
+        # On == we are actually reading this bike right now: it is advertising
+        # or we hold a connection (a connected bike often stops advertising),
+        # *and* it is not rejecting our handshake. Without that last condition a
+        # bike we cannot authenticate to would still report "connected" while
+        # every other sensor quietly served its last-known value.
+        value_fn=lambda coordinator: (
+            (coordinator.available or coordinator.streaming)
+            and not coordinator.auth_failed
+        ),
     ),
 )
 

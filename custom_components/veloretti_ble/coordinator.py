@@ -66,6 +66,8 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
         self.last_successful_poll: datetime | None = None
         # True while we hold a live streaming connection to the bike.
         self._streaming = False
+        # True once the auth handshake has been rejected and not yet recovered.
+        self._auth_failed = False
         super().__init__(
             hass=hass,
             logger=_LOGGER,
@@ -93,6 +95,24 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
         as "reachable" so they stay available (and update) while connected.
         """
         return self._streaming
+
+    @property
+    def auth_failed(self) -> bool:
+        """Return True while the bike is reachable but rejects our handshake.
+
+        This is the one failure a user cannot fix without being told about it,
+        so it must not look like a sleeping bike: entities that report
+        reachability treat it as "not reachable" rather than silently serving a
+        stale reading.
+        """
+        return self._auth_failed
+
+    @callback
+    def _set_auth_failed(self, value: bool) -> None:
+        """Flip the auth-failure flag and let entities re-evaluate."""
+        if self._auth_failed != value:
+            self._auth_failed = value
+            self.async_update_listeners()
 
     @callback
     def _needs_poll(
@@ -143,9 +163,18 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
             # assist/light/speed changes appear in near real-time instead of only
             # on the next reconnect.
             await self._async_listen(client)
-        except ComoduleAuthError as err:
-            _LOGGER.warning("Authentication with the bike failed: %s", err)
+        except ComoduleAuthError:
+            # A rejected handshake is not a sleeping bike: the bike is right
+            # there, advertising, and we simply cannot read it. Flag it so
+            # Connectivity turns off instead of reporting a stale value as live,
+            # and let it reach the base coordinator, which logs the failure once
+            # and clears `last_poll_successful` until a later poll recovers.
+            self._set_auth_failed(True)
+            raise
         except BleakError as err:
+            # Transient by nature: the bike fell asleep or moved out of range
+            # mid-poll. That is the normal life of a bike that is off most of
+            # the time, so it stays at debug and never surfaces as an error.
             _LOGGER.debug("connection error during poll/listen: %s", err)
         finally:
             try:
@@ -177,6 +206,13 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
             data.speed_kmh = prev.speed_kmh
         if data.motion_raw is None:
             data.motion_raw = prev.motion_raw
+        # Carry forward raw packets seen earlier, so the diagnostics download
+        # keeps the fullest picture of the registers this bike has ever answered.
+        data.raw = {**prev.raw, **data.raw}
+        # Getting here means the handshake succeeded, so any earlier auth
+        # failure is over.
+        self._auth_failed = False
+        _LOGGER.debug("register snapshot: %s", data.raw)
         self.data = data
         self.async_update_listeners()
 
@@ -198,6 +234,9 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
 
         @callback
         def _on_push(_char: object, raw: bytearray) -> None:
+            # Log before decoding, so a register this decoder does not know yet
+            # still shows up for whoever is mapping a new model.
+            _LOGGER.debug("notifier push: %s", bytes(raw).hex(" "))
             if apply_notification(self.data, bytes(raw)):
                 self.last_successful_poll = dt_util.utcnow()
                 self.async_update_listeners()
