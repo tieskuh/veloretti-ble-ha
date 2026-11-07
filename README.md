@@ -121,12 +121,19 @@ switched on:
 
 ## Installation
 
-### HACS (recommended)
+[![Open your Home Assistant instance and open this repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=tieskuh&repository=veloretti-ble-ha&category=integration)
 
-1. In Home Assistant, open **HACS → ⋮ → Custom repositories**.
-2. Add `https://github.com/tieskuh/veloretti-ble-ha` with category **Integration**.
-3. Search for **Veloretti BLE** in HACS and install it.
-4. **Restart Home Assistant.**
+### Marketplace (Home Assistant 2026.11 and newer)
+
+1. Go to **Settings → Marketplace**.
+2. Search for **Veloretti BLE** and select **Install**.
+3. Home Assistant opens the setup page once it is installed. If a restart is
+   needed first, a repair notification will say so.
+
+### HACS (Home Assistant 2026.10 and older)
+
+Open **HACS**, search for **Veloretti BLE**, and download it. Then restart
+Home Assistant.
 
 ### Manual
 
