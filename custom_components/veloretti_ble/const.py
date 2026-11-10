@@ -34,6 +34,20 @@ SECURITY_STATUS_UUID = f"00002558{_BASE}"  # read: isAuthenticated
 # on; this interval only governs how soon we reconnect after the link drops.
 DEFAULT_POLL_INTERVAL_SECONDS = 15
 
+# After an attempt that never got a reading (connect failed, handshake rejected),
+# wait this long before trying again. Every attempt pauses scanning on the proxy
+# that makes it, so a bike that is on but out of reach must not be hammered.
+# Kept short all the same: the bike switches itself off after five minutes, and
+# a failed attempt can already take up to 80 seconds (4 tries of 20 seconds).
+RETRY_AFTER_FAILURE_SECONDS = 30
+
+# Home Assistant only tells us about an advertisement when its payload changes,
+# and not at all while a scanner that cannot connect heard the bike first.
+# The bike's advertisement is static, so we also look for it ourselves this
+# often, and connect when a scanner that can connect heard it this recently.
+PRESENCE_CHECK_SECONDS = 15
+PRESENCE_FRESH_SECONDS = 60
+
 # While streaming, read the battery this often to keep the link verified (and the
 # battery fresh) even when nothing else is changing.
 KEEPALIVE_SECONDS = 30

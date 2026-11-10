@@ -21,9 +21,12 @@ from bleak_retry_connector import (
     establish_connection,
 )
 from homeassistant.components.bluetooth import (
+    MONOTONIC_TIME,
+    BluetoothChange,
     BluetoothScanningMode,
     BluetoothServiceInfoBleak,
     async_ble_device_from_address,
+    async_last_service_info,
 )
 from homeassistant.components.bluetooth.active_update_coordinator import (
     ActiveBluetoothDataUpdateCoordinator,
@@ -43,6 +46,8 @@ from .const import (
     DEFAULT_POLL_INTERVAL_SECONDS,
     KEEPALIVE_SECONDS,
     METRICS_NOTIFIER_UUID,
+    PRESENCE_FRESH_SECONDS,
+    RETRY_AFTER_FAILURE_SECONDS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -68,6 +73,8 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
         self._streaming = False
         # True once the auth handshake has been rejected and not yet recovered.
         self._auth_failed = False
+        # True when the last attempt ended without a reading; slows the retry.
+        self._last_attempt_failed = False
         super().__init__(
             hass=hass,
             logger=_LOGGER,
@@ -121,17 +128,45 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
         seconds_since_last_poll: float | None,
     ) -> bool:
         """Decide whether to poll on this advertisement."""
+        interval = (
+            RETRY_AFTER_FAILURE_SECONDS
+            if self._last_attempt_failed
+            else DEFAULT_POLL_INTERVAL_SECONDS
+        )
         return (
             self.hass.state is CoreState.running
-            and (
-                seconds_since_last_poll is None
-                or seconds_since_last_poll >= DEFAULT_POLL_INTERVAL_SECONDS
-            )
+            and (seconds_since_last_poll is None or seconds_since_last_poll >= interval)
             and async_ble_device_from_address(
                 self.hass, service_info.device.address, connectable=True
             )
             is not None
         )
+
+    @callback
+    def async_check_presence(self, _now: datetime | None = None) -> None:
+        """Connect to a bike that is awake but was never announced to us.
+
+        Home Assistant passes an advertisement on only when its payload differs
+        from the previous one, and drops the ones from a scanner that can
+        connect while a scanner that cannot heard the bike first and still
+        holds it. The bike's advertisement never changes, so in both cases it
+        is awake and within reach and nothing tells us. Called on a timer: if a
+        connectable scanner heard the bike recently, handle that advertisement
+        as if it had just been delivered. ``_needs_poll`` still decides whether
+        a poll is due.
+        """
+        if self._streaming:
+            return
+        service_info = async_last_service_info(
+            self.hass, self.address, connectable=True
+        )
+        if (
+            service_info is None
+            or MONOTONIC_TIME() - service_info.time > PRESENCE_FRESH_SECONDS
+        ):
+            # Not heard lately: asleep or gone. Trying now would only fail.
+            return
+        self._async_handle_bluetooth_event(service_info, BluetoothChange.ADVERTISEMENT)
 
     async def _async_poll_bike(
         self, service_info: BluetoothServiceInfoBleak
@@ -144,6 +179,8 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
             # Went back to sleep between advertisement and poll; keep last values.
             return self.data
 
+        # Counts as failed until a snapshot is published (see `_publish`).
+        self._last_attempt_failed = True
         # Clear any half-open connection left over from a previous poll first.
         await close_stale_connections_by_address(service_info.device.address)
         client = await establish_connection(
@@ -212,6 +249,7 @@ class VelorettiCoordinator(ActiveBluetoothDataUpdateCoordinator[ComoduleData]):
         # Getting here means the handshake succeeded, so any earlier auth
         # failure is over.
         self._auth_failed = False
+        self._last_attempt_failed = False
         _LOGGER.debug("register snapshot: %s", data.raw)
         self.data = data
         self.async_update_listeners()

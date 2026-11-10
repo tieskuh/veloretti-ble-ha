@@ -119,6 +119,11 @@ switched on:
   a Shelly, it will not show up during setup. Use an ESPHome proxy or HA's own
   adapter instead.
 
+Scanners that cannot connect do no harm next to one that can. If a Shelly or a
+passive proxy also hears the bike, Home Assistant still connects through the
+adapter that is able to. It can then take up to about 15 seconds after you switch
+the bike on.
+
 ## Installation
 
 [![Open your Home Assistant instance and open this repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=tieskuh&repository=veloretti-ble-ha&category=integration)

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 from homeassistant.const import CONF_ADDRESS, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.event import async_track_time_interval
 
+from .const import PRESENCE_CHECK_SECONDS
 from .coordinator import VelorettiConfigEntry, VelorettiCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,6 +28,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: VelorettiConfigEntry) ->
     # Start listening for advertisements; polling happens automatically while the
     # bike is awake. Nothing happens (and nothing errors) while it sleeps.
     entry.async_on_unload(coordinator.async_start())
+    # Advertisements alone are not enough to notice an awake bike (see
+    # `async_check_presence`), so also look for it on a timer.
+    entry.async_on_unload(
+        async_track_time_interval(
+            hass,
+            coordinator.async_check_presence,
+            timedelta(seconds=PRESENCE_CHECK_SECONDS),
+        )
+    )
     return True
 
 
